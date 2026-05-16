@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mural Escolar - Login Real</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0d0d0d;
+    color:white;
+}
+
+/* LOGIN */
+
+#login{
+    position:fixed;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    background:#0d0d0d;
+}
+
+#login input{
+    padding:10px;
+    margin:5px;
+    width:220px;
+    border:none;
+    border-radius:8px;
+    background:#222;
+    color:white;
+}
+
+#login button{
+    width:220px;
+    padding:10px;
+    margin-top:5px;
+    border:none;
+    border-radius:8px;
+    background:#6366f1;
+    color:white;
+    cursor:pointer;
+}
+
+/* APP */
+
+#app{
+    display:none;
+    max-width:750px;
+    margin:auto;
+    padding:20px;
+}
+
+.topo{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+/* POST */
+
+textarea{
+    width:100%;
+    height:80px;
+    background:#222;
+    border:none;
+    color:white;
+    padding:10px;
+    border-radius:10px;
+}
+
+.post{
+    background:#171717;
+    padding:15px;
+    border-radius:12px;
+    margin-top:15px;
+}
+
+button{
+    margin-top:5px;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#6366f1;
+    color:white;
+    cursor:pointer;
+}
+
+.actions button{
+    background:#262626;
+    margin-right:5px;
+}
+
+/* PERFIL */
+
+.perfil{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+}
+
+.perfil img{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+}
+
+/* TOAST */
+
+.toast{
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    background:#333;
+    padding:10px;
+    border-radius:8px;
+    display:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+
+<h2>Login</h2>
+
+<input id="user" placeholder="Usuário">
+<input id="pass" type="password" placeholder="Senha">
+
+<button onclick="entrar()">Entrar</button>
+
+<button onclick="criarConta()" style="background:#333;">
+Criar conta
+</button>
+
+</div>
+
+<!-- APP -->
+<div id="app">
+
+<div class="topo">
+
+<h2>Mural Escolar</h2>
+
+<div class="perfil" onclick="logout()">
+    <span id="nomeTopo"></span>
+    <img id="fotoTopo" src="">
+</div>
+
+</div>
+
+<textarea id="texto" placeholder="Escreva algo..."></textarea>
+<button onclick="postar()">Postar</button>
+
+<div id="feed"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+let contas = JSON.parse(localStorage.getItem("contas") || "{}");
+
+let usuarioAtual = null;
+
+// ================= LOGIN =================
+
+function criarConta(){
+
+    let u = document.getElementById("user").value;
+    let p = document.getElementById("pass").value;
+
+    if(!u || !p) return;
+
+    if(contas[u]){
+        alert("Usuário já existe!");
+        return;
+    }
+
+    contas[u] = {
+        senha:p,
+        nome:u,
+        foto:"https://cdn-icons-png.flaticon.com/512/149/149071.png",
+        posts:[]
+    };
+
+    salvarContas();
+
+    alert("Conta criada!");
+}
+
+function entrar(){
+
+    let u = document.getElementById("user").value;
+    let p = document.getElementById("pass").value;
+
+    if(!contas[u]){
+        alert("Usuário não existe!");
+        return;
+    }
+
+    if(contas[u].senha !== p){
+        alert("Senha errada!");
+        return;
+    }
+
+    usuarioAtual = u;
+
+    document.getElementById("login").style.display="none";
+    document.getElementById("app").style.display="block";
+
+    atualizarPerfil();
+    render();
+    toast("Bem-vindo " + u);
+}
+
+// ================= PERFIL =================
+
+function atualizarPerfil(){
+
+    document.getElementById("nomeTopo").innerText =
+    contas[usuarioAtual].nome;
+
+    document.getElementById("fotoTopo").src =
+    contas[usuarioAtual].foto;
+}
+
+// ================= POST =================
+
+function postar(){
+
+    let txt = document.getElementById("texto").value;
+
+    if(!txt) return;
+
+    contas[usuarioAtual].posts.push({
+        texto:txt,
+        likes:[],
+        comentarios:[]
+    });
+
+    salvarContas();
+    render();
+}
+
+// ================= RENDER =================
+
+function render(){
+
+    let feed = document.getElementById("feed");
+    feed.innerHTML="";
+
+    contas[usuarioAtual].posts.forEach((p,i)=>{
+
+        feed.innerHTML += `
+        <div class="post">
+
+            <b>${contas[usuarioAtual].nome}</b>
+            <p>${p.texto}</p>
+
+            <div class="actions">
+                <button onclick="like(${i})">
+                ❤️ ${p.likes.length}
+                </button>
+            </div>
+
+            <div>
+                ${p.comentarios.map(c=>`<p>💬 ${c}</p>`).join("")}
+            </div>
+
+            <input id="c${i}" placeholder="comentar">
+            <button onclick="comentar(${i})">ok</button>
+
+        </div>
+        `;
+    });
+}
+
+// ================= LIKE =================
+
+function like(i){
+
+    let nome = usuarioAtual;
+
+    if(contas[usuarioAtual].posts[i].likes.includes(nome)){
+        toast("Você já curtiu");
+        return;
+    }
+
+    contas[usuarioAtual].posts[i].likes.push(nome);
+
+    salvarContas();
+    render();
+}
+
+// ================= COMENTAR =================
+
+function comentar(i){
+
+    let val = document.getElementById("c"+i).value;
+
+    if(!val) return;
+
+    contas[usuarioAtual].posts[i].comentarios.push(
+        usuarioAtual + ": " + val
+    );
+
+    salvarContas();
+    render();
+}
+
+// ================= LOGOUT =================
+
+function logout(){
+
+    usuarioAtual = null;
+
+    document.getElementById("login").style.display="flex";
+    document.getElementById("app").style.display="none";
+
+}
+
+// ================= SAVE =================
+
+function salvarContas(){
+    localStorage.setItem("contas", JSON.stringify(contas));
+}
+
+// ================= TOAST =================
+
+function toast(msg){
+
+    let t = document.getElementById("toast");
+
+    t.innerText = msg;
+    t.style.display="block";
+
+    setTimeout(()=>{
+        t.style.display="none";
+    },2000);
+}
+
+function mudarFotoPerfil(file){
+
+    if(!file) return;
+
+    let reader = new FileReader();
+
+    reader.onload = e=>{
+
+        contas[usuarioAtual].foto = e.target.result;
+
+        salvarContas();
+        atualizarPerfil();
+        render();
+        toast("Foto atualizada!");
+    };
+
+    reader.readAsDataURL(file);
+}
+
+
+</script>
+
+</body>
+</html>
